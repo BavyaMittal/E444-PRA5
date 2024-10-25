@@ -1,15 +1,15 @@
 from flask import Flask, request, jsonify
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
 import pickle
 import os
 
+# Initialize the Flask application
 application = Flask(__name__)
 
 # Load the pre-trained model and vectorizer
 model_path = os.path.join(os.path.dirname(__file__), 'basic_classifier.pkl')
 with open(model_path, 'rb') as fid:
     loaded_model = pickle.load(fid)
+
 
 vectorizer_path = os.path.join(os.path.dirname(__file__), 'count_vectorizer.pkl')
 with open(vectorizer_path, 'rb') as vd:
@@ -18,40 +18,45 @@ with open(vectorizer_path, 'rb') as vd:
 
 @application.route('/')
 def home():
-    return "Hello, welcome to Fake News Detection API"
+    return "Welcome to ECE444 PRA5."
 
-# Define a route for sentiment prediction
-@application.route('/predict', methods=['GET','POST'])
+
+@application.route('/predict', methods=['GET', 'POST'])
 def predict():
-
     if request.method == 'GET':
-        return "Use POST method"
-    
-    try: 
-        data = request.get_json()  # Receive JSON data
+        return "Please use POST to send data"
+
+    try:
+        # get text from the request
+        print(request)
+        input_text = request.form.get('text')
         
-        if not data: 
-                return jsonify ({'error': 'No input'}), 400
+        if not input_text:
+            return jsonify({'error': 'No input'}), 400
         
-        print (f"Input: {data}")
+        print(f"Input: {input_text}")
         
+        # predict using provided model
         predictions = []
-        for i in data: 
-            vectorized_input = vectorizer.transform([i])
-            prediction = loaded_model.predict(vectorized_input)[0]
+        
+        vectorized_input = vectorizer.transform([input_text])
+        prediction = loaded_model.predict(vectorized_input)[0]
+    
+        if prediction == 'FAKE':
+            predictions.append(1)
+        elif prediction == 'REAL':
+            predictions.append(0)
+        else:
+            raise ValueError(f"Unexpected prediction value: {prediction}")
+        
+        print("Prediction:", predictions)
+        
+        return jsonify({'input': input_text, 'prediction': predictions}), 200
 
-            if prediction =='FAKE': 
-                predictions.append(1)
-            
-            elif prediction == 'REAL': 
-                predictions.append(0)
-            
-            else: 
-                raise ValueError(f"Unexpected prediction value: {prediction}")
-            
-        print ("Prediction:", predictions)
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({'error': "An error occurred during prediction"}), 500
 
-        return jsonify({'input': data,'prediction': predictions}), 200
 
-if __name__ == '__main__':
-    application.run(debug=True)
+if __name__ == "__main__":
+    application.run()
